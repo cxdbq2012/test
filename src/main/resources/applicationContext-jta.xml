@@ -1,0 +1,167 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:context="http://www.springframework.org/schema/context"
+	xmlns:aop="http://www.springframework.org/schema/aop" xmlns:tx="http://www.springframework.org/schema/tx"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans
+           http://www.springframework.org/schema/beans/spring-beans-4.2.xsd
+           http://www.springframework.org/schema/context
+           http://www.springframework.org/schema/context/spring-context-4.2.xsd
+           http://www.springframework.org/schema/aop
+           http://www.springframework.org/schema/aop/spring-aop-4.2.xsd
+           http://www.springframework.org/schema/tx 
+           http://www.springframework.org/schema/tx/spring-tx-4.2.xsd">
+
+	<bean id="main" class="com.mycompany.jta.MyJtaTest">
+		<property name="txManager" ref="txManager"></property>
+		<property name="babasport_jdbcTemplate" ref="babasportTemplate"></property>
+		<property name="ssh_jdbcTemplate" ref="sshdbTemplate"></property>
+	</bean>
+
+
+	<!-- <bean id="jotm" class="org.springframework.jdbc.datasource.DataSourceTransactionManager"> -->
+	<!-- <property name="dataSource" ref="db1"/> -->
+	<!-- </bean> -->
+
+
+	<!-- jotm 本地实例 -->
+	<!-- <bean id="jotm" class="org.springframework.transaction.jta.UserTransactionAdapter" 
+		/> -->
+
+	<!-- Construct Atomikos UserTransactionManager, needed to configure Spring -->
+	<bean id="atomikosTransactionManager" class="com.atomikos.icatch.jta.UserTransactionManager"
+		init-method="init" destroy-method="close">
+		<!-- when close is called, should we force transactions to terminate or 
+			not? -->
+		<property name="forceShutdown">
+			<value>true</value>
+		</property>
+	</bean>
+
+	<!-- Also use Atomikos UserTransactionImp, needed to configure Spring -->
+<!-- 	<bean id="atomikosUserTransaction" class="com.atomikos.icatch.jta.UserTransactionImp"> -->
+<!-- 		<property name="transactionTimeout"> -->
+<!-- 			<value>300</value> -->
+<!-- 		</property> -->
+<!-- 	</bean> -->
+
+
+	<!-- Configure the Spring framework to use JTA transactions from Atomikos -->
+	<bean id="txManager"
+		class="org.springframework.transaction.jta.JtaTransactionManager">
+
+		<property name="transactionManager">
+			<ref bean="atomikosTransactionManager" />
+		</property>
+<!-- 		<property name="userTransaction"> -->
+<!-- 			<ref bean="atomikosUserTransaction" /> -->
+<!-- 		</property> -->
+	</bean>
+
+
+	<!-- JTA事务管理器 -->
+	<!-- <bean id="txManager" -->
+	<!-- class="org.springframework.transaction.jta.JtaTransactionManager"> -->
+	<!-- <constructor-arg ref="jotm"></constructor-arg> -->
+	<!-- </bean> -->
+
+	<!-- XAPool配置，内部包含了一个XA数据源，对应sshdb数据库 -->
+	<!-- <bean id="db1" class="org.enhydra.jdbc.pool.StandardXAPoolDataSource" -->
+	<!-- destroy-method="shutdown"> -->
+	<!-- <property name="dataSource"> -->
+	<!-- 内部XA数据源 -->
+	<!-- <bean class="org.enhydra.jdbc.standard.StandardXADataSource" -->
+	<!-- destroy-method="shutdown"> -->
+
+	<!-- <property name="driverName" value="com.mysql.jdbc.Driver" /> -->
+	<!-- <property name="url" -->
+	<!-- value="jdbc:mysql://127.0.0.1:3306/xiadongbin?useUnicode=true&amp;characterEncoding=UTF-8" 
+		/> -->
+	<!-- </bean> -->
+	<!-- </property> -->
+	<!-- <property name="user" value="root" /> -->
+	<!-- <property name="password" value="root" /> -->
+	<!-- </bean> -->
+
+	<bean id="db1" class="com.atomikos.jdbc.AtomikosDataSourceBean"
+		init-method="init" destroy-method="close">
+		<property name="uniqueResourceName">
+			<value>XADBMS1</value>
+		</property>
+		<!-- <property name="xaDataSourceClassName"> -->
+		<!-- <value>org.enhydra.jdbc.standard.StandardXADataSource</value> -->
+		<!-- </property> -->
+		<property name="xaDataSource">
+
+			<bean class="org.enhydra.jdbc.standard.StandardXADataSource"
+				destroy-method="shutdown">
+				<property name="transactionManager" ref="atomikosTransactionManager" />
+				<property name="driverName" value="com.mysql.jdbc.Driver" />
+				<property name="url"
+					value="jdbc:mysql://127.0.0.1:3306/xiadongbin?useUnicode=true&amp;characterEncoding=UTF-8" />
+				<property name="user" value="root" />
+				<property name="password" value="root" />
+			</bean>
+		</property>
+
+		<property name="poolSize">
+			<value>1</value>
+		</property>
+	</bean>
+
+
+
+
+	<!-- 另一个XAPool配置，内部包含另一个XA数据源，对应babasport数据库 -->
+	<!-- <bean id="db2" class="org.enhydra.jdbc.pool.StandardXAPoolDataSource" -->
+	<!-- destroy-method="shutdown"> -->
+	<!-- <property name="dataSource"> -->
+	<!-- <bean class="org.enhydra.jdbc.standard.StandardXADataSource" -->
+	<!-- destroy-method="shutdown"> -->
+	<!-- <property name="transactionManager" ref="jotm" /> -->
+	<!-- <property name="driverName" value="com.mysql.jdbc.Driver" /> -->
+	<!-- <property name="url" -->
+	<!-- value="jdbc:mysql://127.0.0.1:3306/xiadongbin?useUnicode=true&amp;characterEncoding=UTF-8" 
+		/> -->
+	<!-- </bean> -->
+	<!-- </property> -->
+	<!-- <property name="user" value="root" /> -->
+	<!-- <property name="password" value="root" /> -->
+	<!-- </bean> -->
+	<bean id="db2" class="com.atomikos.jdbc.AtomikosDataSourceBean"
+		init-method="init" destroy-method="close">
+		<property name="uniqueResourceName">
+			<value>XADBMS2</value>
+		</property>
+		<!-- <property name="xaDataSourceClassName"> -->
+		<!-- <value>org.enhydra.jdbc.standard.StandardXADataSource</value> -->
+		<!-- </property> -->
+		<property name="xaDataSource">
+
+			<bean class="org.enhydra.jdbc.standard.StandardXADataSource"
+				destroy-method="shutdown">
+
+				<property name="transactionManager" ref="atomikosTransactionManager" />
+				<property name="driverName" value="com.mysql.jdbc.Driver" />
+				<property name="url"
+					value="jdbc:mysql://127.0.0.1:3306/xiadongbin?useUnicode=true&amp;characterEncoding=UTF-8" />
+				<property name="user" value="root" />
+				<property name="password" value="root" />
+
+			</bean>
+		</property>
+
+		<property name="poolSize">
+			<value>1</value>
+		</property>
+	</bean>
+
+	<!-- 配置访问sshdb数据源的Spring JDBC模板 -->
+	<bean id="sshdbTemplate" class="org.springframework.jdbc.core.JdbcTemplate">
+		<property name="dataSource" ref="db1"></property>
+	</bean>
+
+	<!-- 配置访问babasport数据源的Spring JDBC模板 -->
+	<bean id="babasportTemplate" class="org.springframework.jdbc.core.JdbcTemplate">
+		<property name="dataSource" ref="db2"></property>
+	</bean>
+</beans>
